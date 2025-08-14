@@ -7,7 +7,7 @@ import {
     Message,
     SystemContentBlock,
 } from "@aws-sdk/client-bedrock-runtime"
-import { NodeHttpHandler } from "@aws-sdk/node-http-handler"
+import { NodeHttpHandler } from "@smithy/node-http-handler"
 import { fromIni } from "@aws-sdk/credential-providers"
 import { Anthropic } from "@anthropic-ai/sdk"
 import * as vscode from "vscode"
@@ -306,8 +306,6 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 			return new NodeHttpHandler({
 				httpAgent,
 				httpsAgent,
-				// 0 = no timeout (let Bedrock stream indefinitely until our own AbortController cancels)
-				requestTimeout: 0,
 			})
 		} catch (err) {
 			logger.warn("Failed to initialize custom NodeHttpHandler; falling back to default", {
