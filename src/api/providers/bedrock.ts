@@ -1,11 +1,11 @@
 import {
-    BedrockRuntimeClient,
-    ConverseStreamCommand,
-    ConverseCommand,
-    BedrockRuntimeClientConfig,
-    ContentBlock,
-    Message,
-    SystemContentBlock,
+	BedrockRuntimeClient,
+	ConverseStreamCommand,
+	ConverseCommand,
+	BedrockRuntimeClientConfig,
+	ContentBlock,
+	Message,
+	SystemContentBlock,
 } from "@aws-sdk/client-bedrock-runtime"
 import { NodeHttpHandler } from "@smithy/node-http-handler"
 import { fromIni } from "@aws-sdk/credential-providers"
@@ -267,7 +267,13 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 	private createNodeHttpHandler(): NodeHttpHandler | undefined {
 		try {
 			const httpConfig = vscode.workspace.getConfiguration("http")
-			const proxyUrl = (httpConfig.get<string>("proxy") || process.env.HTTPS_PROXY || process.env.HTTP_PROXY || process.env.ALL_PROXY || "").trim()
+			const proxyUrl = (
+				httpConfig.get<string>("proxy") ||
+				process.env.HTTPS_PROXY ||
+				process.env.HTTP_PROXY ||
+				process.env.ALL_PROXY ||
+				""
+			).trim()
 			const strictSSL = httpConfig.get<boolean>("proxyStrictSSL", true)
 
 			let ca: Buffer | undefined
@@ -294,7 +300,14 @@ export class AwsBedrockHandler extends BaseProvider implements SingleCompletionH
 
 			if (proxyUrl) {
 				// Use proxy-agent to support http/https/socks/PAC proxies seamlessly
-				const proxyAgent = new ProxyAgent(proxyUrl) as unknown as https.Agent
+				// ProxyAgent constructor expects options object with proper TLS configuration
+				const proxyAgent = new ProxyAgent({
+					// The ProxyAgent will use the proxy URL from environment or options
+					httpsAgent: new https.Agent(agentOptions),
+					// Pass TLS options for proper certificate handling
+					rejectUnauthorized: strictSSL,
+					...(ca ? { ca } : {}),
+				})
 				// proxy-agent returns a single agent for both protocols
 				httpAgent = proxyAgent
 				httpsAgent = proxyAgent
