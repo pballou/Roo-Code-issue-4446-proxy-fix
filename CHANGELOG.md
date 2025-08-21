@@ -1,5 +1,48 @@
 # Roo Code Changelog
 
+## [3.25.20] - 2025-08-19
+
+- Add announcement for Sonic model
+
+## [3.25.19] - 2025-08-19
+
+- Fix issue where new users couldn't select the Roo Code Cloud provider (thanks @daniel-lxs!)
+
+## [3.25.18] - 2025-08-19
+
+- Add new stealth Sonic model through the Roo Code Cloud provider
+- Fix: respect enableReasoningEffort setting when determining reasoning usage (#7048 by @ikbencasdoei, PR by @app/roomote)
+- Fix: prevent duplicate LM Studio models with case-insensitive deduplication (#6954 by @fbuechler, PR by @daniel-lxs)
+- Feat: simplify ask_followup_question prompt documentation (thanks @daniel-lxs!)
+- Feat: simple read_file tool for single-file-only models (thanks @daniel-lxs!)
+- Fix: Add missing zaiApiKey and doubaoApiKey to SECRET_STATE_KEYS (#7082 by @app/roomote)
+- Feat: Add new models and update configurations for vscode-lm (thanks @NaccOll!)
+
+## [3.25.17] - 2025-08-17
+
+- Fix: Resolve terminal reuse logic issues
+
+## [3.25.16] - 2025-08-16
+
+- Add support for OpenAI gpt-5-chat-latest model (#7057 by @PeterDaveHello, PR by @app/roomote)
+- Fix: Use native Ollama API instead of OpenAI compatibility layer (#7070 by @LivioGama, PR by @daniel-lxs)
+- Fix: Prevent XML entity decoding in diff tools (#7107 by @indiesewell, PR by @app/roomote)
+- Fix: Add type check before calling .match() on diffItem.content (#6905 by @pwilkin, PR by @app/roomote)
+- Refactor task execution system: improve call stack management (thanks @catrielmuller!)
+- Fix: Enable save button for provider dropdown and checkbox changes (thanks @daniel-lxs!)
+- Add an API for resuming tasks by ID (thanks @mrubens!)
+- Emit event when a task ask requires interaction (thanks @cte!)
+- Make enhance with task history default to true (thanks @liwilliam2021!)
+- Fix: Use cline.cwd as primary source for workspace path in codebaseSearchTool (thanks @NaccOll!)
+- Hotfix multiple folder workspace checkpoint (thanks @NaccOll!)
+
+## [3.25.15] - 2025-08-14
+
+- Fix: Remove 500-message limit to prevent scrollbar jumping in long conversations (#7052, #7063 by @daniel-lxs, PR by @app/roomote)
+- Fix: Reset condensing state when switching tasks (#6919 by @f14XuanLv, PR by @f14XuanLv)
+- Fix: Implement sitemap generation in TypeScript and remove XML file (#5231 by @abumalick, PR by @abumalick)
+- Fix: allowedMaxRequests and allowedMaxCost values not showing in the settings UI (thanks @chrarnoldus!)
+
 ## [3.25.14] - 2025-08-13
 
 - Fix: Only include verbosity parameter for models that support it (#7054 by @eastonmeth, PR by @app/roomote)
