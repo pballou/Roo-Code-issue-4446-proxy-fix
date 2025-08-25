@@ -80,7 +80,7 @@ import { ToolRepetitionDetector } from "../tools/ToolRepetitionDetector"
 import { FileContextTracker } from "../context-tracking/FileContextTracker"
 import { RooIgnoreController } from "../ignore/RooIgnoreController"
 import { RooProtectedController } from "../protect/RooProtectedController"
-import { type AssistantMessageContent, presentAssistantMessage, parseAssistantMessage } from "../assistant-message"
+import { type AssistantMessageContent, presentAssistantMessage } from "../assistant-message"
 import { AssistantMessageParser } from "../assistant-message/AssistantMessageParser"
 import { truncateConversationIfNeeded } from "../sliding-window"
 import { ClineProvider } from "../webview/ClineProvider"
@@ -126,6 +126,7 @@ export type TaskOptions = {
 	parentTask?: Task
 	taskNumber?: number
 	onCreated?: (task: Task) => void
+	initialTodos?: TodoItem[]
 }
 
 export class Task extends EventEmitter<TaskEvents> implements TaskLike {
@@ -269,8 +270,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 	didRejectTool = false
 	didAlreadyUseTool = false
 	didCompleteReadingStream = false
-	assistantMessageParser?: AssistantMessageParser
-	isAssistantMessageParserEnabled = false
+	assistantMessageParser: AssistantMessageParser
 	private lastUsedInstructions?: string
 	private skipPrevResponseIdOnce: boolean = false
 
@@ -290,6 +290,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		parentTask,
 		taskNumber = -1,
 		onCreated,
+		initialTodos,
 	}: TaskOptions) {
 		super()
 
@@ -353,6 +354,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 			TelemetryService.instance.captureTaskCreated(this.taskId)
 		}
 
+		// Initialize the assistant message parser
+		this.assistantMessageParser = new AssistantMessageParser()
+
 		// Only set up diff strategy if diff is enabled.
 		if (this.diffEnabled) {
 			// Default to old strategy, will be updated if experiment is enabled.
@@ -372,6 +376,11 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		}
 
 		this.toolRepetitionDetector = new ToolRepetitionDetector(this.consecutiveMistakeLimit)
+
+		// Initialize todo list if provided
+		if (initialTodos && initialTodos.length > 0) {
+			this.todoList = initialTodos
+		}
 
 		onCreated?.(this)
 
@@ -1078,6 +1087,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 		// messages from previous session).
 		this.clineMessages = []
 		this.apiConversationHistory = []
+
+		// The todo list is already set in the constructor if initialTodos were provided
+		// No need to add any messages - the todoList property is already set
+
 		await this.providerRef.deref()?.postStateToWebview()
 
 		await this.say("text", task, images)
@@ -1110,6 +1123,10 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				role: "user",
 				content: [{ type: "text", text: `[new_task completed] Result: ${lastMessage}` }],
 			})
+
+			// Set skipPrevResponseIdOnce to ensure the next API call sends the full conversation
+			// including the subtask result, not just from before the subtask was created
+			this.skipPrevResponseIdOnce = true
 		} catch (error) {
 			this.providerRef
 				.deref()
@@ -1740,9 +1757,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				this.didAlreadyUseTool = false
 				this.presentAssistantMessageLocked = false
 				this.presentAssistantMessageHasPendingUpdates = false
-				if (this.assistantMessageParser) {
-					this.assistantMessageParser.reset()
-				}
+				this.assistantMessageParser.reset()
 
 				await this.diffViewProvider.reset()
 
@@ -1783,12 +1798,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 
 								// Parse raw assistant message chunk into content blocks.
 								const prevLength = this.assistantMessageContent.length
-								if (this.isAssistantMessageParserEnabled && this.assistantMessageParser) {
-									this.assistantMessageContent = this.assistantMessageParser.processChunk(chunk.text)
-								} else {
-									// Use the old parsing method when experiment is disabled
-									this.assistantMessageContent = parseAssistantMessage(assistantMessage)
-								}
+								this.assistantMessageContent = this.assistantMessageParser.processChunk(chunk.text)
 
 								if (this.assistantMessageContent.length > prevLength) {
 									// New content we need to present, reset to
@@ -2047,11 +2057,8 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				// this.assistantMessageContent.forEach((e) => (e.partial = false))
 
 				// Now that the stream is complete, finalize any remaining partial content blocks
-				if (this.isAssistantMessageParserEnabled && this.assistantMessageParser) {
-					this.assistantMessageParser.finalizeContentBlocks()
-					this.assistantMessageContent = this.assistantMessageParser.getContentBlocks()
-				}
-				// When using old parser, no finalization needed - parsing already happened during streaming
+				this.assistantMessageParser.finalizeContentBlocks()
+				this.assistantMessageContent = this.assistantMessageParser.getContentBlocks()
 
 				if (partialBlocks.length > 0) {
 					// If there is content to update then it will complete and
@@ -2070,9 +2077,7 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 				await this.providerRef.deref()?.postStateToWebview()
 
 				// Reset parser after each complete conversation round
-				if (this.assistantMessageParser) {
-					this.assistantMessageParser.reset()
-				}
+				this.assistantMessageParser.reset()
 
 				// Now add to apiConversationHistory.
 				// Need to save assistant responses to file before proceeding to
@@ -2228,6 +2233,9 @@ export class Task extends EventEmitter<TaskEvents> implements TaskLike {
 					maxConcurrentFileReads: maxConcurrentFileReads ?? 5,
 					todoListEnabled: apiConfiguration?.todoListEnabled ?? true,
 					useAgentRules: vscode.workspace.getConfiguration("roo-cline").get<boolean>("useAgentRules") ?? true,
+					newTaskRequireTodos: vscode.workspace
+						.getConfiguration("roo-cline")
+						.get<boolean>("newTaskRequireTodos", false),
 				},
 				undefined, // todoList
 				this.api.getModel().id,
