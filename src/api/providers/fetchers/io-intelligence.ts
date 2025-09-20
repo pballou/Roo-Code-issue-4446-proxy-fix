@@ -1,8 +1,8 @@
-import axios from "axios"
 import { z } from "zod"
 import type { ModelInfo } from "@roo-code/types"
 import { IO_INTELLIGENCE_CACHE_DURATION } from "@roo-code/types"
 import type { ModelRecord } from "../../../shared/api"
+import { createConfiguredAxiosInstance } from "../../../utils/httpClient"
 
 /**
  * IO Intelligence Model Schema
@@ -121,11 +121,11 @@ export async function getIOIntelligenceModels(apiKey?: string): Promise<ModelRec
 			throw new Error("IO Intelligence API key is required")
 		}
 
-		const response = await axios.get<IOIntelligenceApiResponse>(
+		const axiosInstance = createConfiguredAxiosInstance({ timeout: 10000 })
+		const response = await axiosInstance.get<IOIntelligenceApiResponse>(
 			"https://api.intelligence.io.solutions/api/v1/models",
 			{
 				headers,
-				timeout: 10000, // 10 second timeout
 			},
 		)
 
@@ -156,7 +156,7 @@ export async function getIOIntelligenceModels(apiKey?: string): Promise<ModelRec
 		}
 
 		// Re-throw with more context
-		if (axios.isAxiosError(error)) {
+		if (error && typeof error === "object" && "isAxiosError" in error && error.isAxiosError) {
 			if (error.response) {
 				throw new Error(
 					`Failed to fetch IO Intelligence models: ${error.response.status} ${error.response.statusText}`,

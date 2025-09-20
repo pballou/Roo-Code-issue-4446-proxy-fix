@@ -1,14 +1,14 @@
-import axios from "axios"
-
 import type { ModelInfo } from "@roo-code/types"
 
 import { parseApiPrice } from "../../../shared/cost"
+import { createConfiguredAxiosInstance } from "../../../utils/httpClient"
 
 export async function getGlamaModels(): Promise<Record<string, ModelInfo>> {
 	const models: Record<string, ModelInfo> = {}
 
 	try {
-		const response = await axios.get("https://glama.ai/api/gateway/v1/models")
+		const axiosInstance = createConfiguredAxiosInstance()
+		const response = await axiosInstance.get("https://glama.ai/api/gateway/v1/models")
 		const rawModels = response.data
 
 		for (const rawModel of rawModels) {

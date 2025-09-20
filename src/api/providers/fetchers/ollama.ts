@@ -1,6 +1,6 @@
-import axios from "axios"
 import { ModelInfo, ollamaDefaultModelInfo } from "@roo-code/types"
 import { z } from "zod"
+import { createConfiguredAxiosInstance } from "../../../utils/httpClient"
 
 const OllamaModelDetailsSchema = z.object({
 	family: z.string(),
@@ -74,14 +74,15 @@ export async function getOllamaModels(
 			headers["Authorization"] = `Bearer ${apiKey}`
 		}
 
-		const response = await axios.get<OllamaModelsResponse>(`${baseUrl}/api/tags`, { headers })
+		const axiosInstance = createConfiguredAxiosInstance()
+		const response = await axiosInstance.get<OllamaModelsResponse>(`${baseUrl}/api/tags`, { headers })
 		const parsedResponse = OllamaModelsResponseSchema.safeParse(response.data)
 		let modelInfoPromises = []
 
 		if (parsedResponse.success) {
 			for (const ollamaModel of parsedResponse.data.models) {
 				modelInfoPromises.push(
-					axios
+					axiosInstance
 						.post<OllamaModelInfoResponse>(
 							`${baseUrl}/api/show`,
 							{

@@ -1,4 +1,3 @@
-import axios from "axios"
 import * as yaml from "yaml"
 import { z } from "zod"
 
@@ -9,6 +8,7 @@ import {
 	mcpMarketplaceItemSchema,
 } from "@roo-code/types"
 import { getRooCodeApiUrl } from "@roo-code/cloud"
+import { createConfiguredAxiosInstance } from "../../utils/httpClient"
 
 const modeMarketplaceResponse = z.object({
 	items: z.array(modeMarketplaceItemSchema),
@@ -88,8 +88,8 @@ export class RemoteConfigLoader {
 
 		for (let i = 0; i < maxRetries; i++) {
 			try {
-				const response = await axios.get(url, {
-					timeout: 10000, // 10 second timeout
+				const axiosInstance = createConfiguredAxiosInstance({ timeout: 10000 })
+				const response = await axiosInstance.get(url, {
 					headers: {
 						Accept: "application/json",
 						"Content-Type": "application/json",

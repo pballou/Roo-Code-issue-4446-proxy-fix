@@ -1,6 +1,5 @@
-import axios from "axios"
-
 import type { ModelInfo } from "@roo-code/types"
+import { createConfiguredAxiosInstance } from "../../../utils/httpClient"
 
 export async function getUnboundModels(apiKey?: string | null): Promise<Record<string, ModelInfo>> {
 	const models: Record<string, ModelInfo> = {}
@@ -12,7 +11,8 @@ export async function getUnboundModels(apiKey?: string | null): Promise<Record<s
 			headers["Authorization"] = `Bearer ${apiKey}`
 		}
 
-		const response = await axios.get("https://api.getunbound.ai/models", { headers })
+		const axiosInstance = createConfiguredAxiosInstance()
+		const response = await axiosInstance.get("https://api.getunbound.ai/models", { headers })
 
 		if (response.data) {
 			const rawModels: Record<string, any> = response.data

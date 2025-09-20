@@ -1,6 +1,6 @@
-import axios from "axios"
 import { z } from "zod"
 import type { ModelInfo } from "@roo-code/types"
+import { createConfiguredAxiosInstance } from "../../../utils/httpClient"
 import {
 	HUGGINGFACE_API_URL,
 	HUGGINGFACE_CACHE_DURATION,
@@ -133,7 +133,8 @@ export async function getHuggingFaceModels(): Promise<ModelRecord> {
 	const models: ModelRecord = {}
 
 	try {
-		const response = await axios.get<HuggingFaceApiResponse>(HUGGINGFACE_API_URL, {
+		const axiosInstance = createConfiguredAxiosInstance({ timeout: 10000 })
+		const response = await axiosInstance.get<HuggingFaceApiResponse>(HUGGINGFACE_API_URL, {
 			headers: {
 				"Upgrade-Insecure-Requests": "1",
 				"Sec-Fetch-Dest": "document",
@@ -144,7 +145,6 @@ export async function getHuggingFaceModels(): Promise<ModelRecord> {
 				Pragma: "no-cache",
 				"Cache-Control": "no-cache",
 			},
-			timeout: 10000, // 10 second timeout
 		})
 
 		const result = huggingFaceApiResponseSchema.safeParse(response.data)
@@ -189,7 +189,7 @@ export async function getHuggingFaceModels(): Promise<ModelRecord> {
 		}
 
 		// Re-throw with more context
-		if (axios.isAxiosError(error)) {
+		if (error && typeof error === "object" && "isAxiosError" in error && error.isAxiosError) {
 			if (error.response) {
 				throw new Error(
 					`Failed to fetch HuggingFace models: ${error.response.status} ${error.response.statusText}`,
@@ -258,7 +258,8 @@ export async function getHuggingFaceModelsWithMetadata(): Promise<HuggingFaceMod
 		}
 
 		// If no cached raw models, fetch directly from API
-		const response = await axios.get(HUGGINGFACE_API_URL, {
+		const axiosInstance = createConfiguredAxiosInstance({ timeout: 10000 })
+		const response = await axiosInstance.get(HUGGINGFACE_API_URL, {
 			headers: {
 				"Upgrade-Insecure-Requests": "1",
 				"Sec-Fetch-Dest": "document",
@@ -269,7 +270,6 @@ export async function getHuggingFaceModelsWithMetadata(): Promise<HuggingFaceMod
 				Pragma: "no-cache",
 				"Cache-Control": "no-cache",
 			},
-			timeout: 10000,
 		})
 
 		const models = response.data?.data || []

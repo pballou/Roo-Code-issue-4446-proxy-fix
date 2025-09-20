@@ -1,7 +1,7 @@
-import axios from "axios"
 import { z } from "zod"
 
 import { type ModelInfo } from "@roo-code/types"
+import { createConfiguredAxiosInstance } from "../../../utils/httpClient"
 
 import { DEFAULT_HEADERS } from "../constants"
 
@@ -42,7 +42,8 @@ export async function getDeepInfraModels(
 	const url = `${baseUrl.replace(/\/$/, "")}/models`
 	const models: Record<string, ModelInfo> = {}
 
-	const response = await axios.get(url, { headers })
+	const axiosInstance = createConfiguredAxiosInstance()
+	const response = await axiosInstance.get(url, { headers })
 	const parsed = DeepInfraModelsResponseSchema.safeParse(response.data)
 	const data = parsed.success ? parsed.data.data : response.data?.data || []
 

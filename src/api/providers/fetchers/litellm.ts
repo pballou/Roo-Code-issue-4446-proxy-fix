@@ -1,8 +1,7 @@
-import axios from "axios"
-
 import { LITELLM_COMPUTER_USE_MODELS } from "@roo-code/types"
 
 import type { ModelRecord } from "../../../shared/api"
+import { createConfiguredAxiosInstance } from "../../../utils/httpClient"
 
 import { DEFAULT_HEADERS } from "../constants"
 /**
@@ -29,8 +28,9 @@ export async function getLiteLLMModels(apiKey: string, baseUrl: string): Promise
 		// Normalize the pathname by removing trailing slashes and multiple slashes
 		urlObj.pathname = urlObj.pathname.replace(/\/+$/, "").replace(/\/+/g, "/") + "/v1/model/info"
 		const url = urlObj.href
-		// Added timeout to prevent indefinite hanging
-		const response = await axios.get(url, { headers, timeout: 5000 })
+		// Create configured axios instance with proxy and CA support
+		const axiosInstance = createConfiguredAxiosInstance({ timeout: 5000 })
+		const response = await axiosInstance.get(url, { headers })
 		const models: ModelRecord = {}
 
 		const computerModels = Array.from(LITELLM_COMPUTER_USE_MODELS)
@@ -84,16 +84,18 @@ export async function getLiteLLMModels(apiKey: string, baseUrl: string): Promise
 		return models
 	} catch (error: any) {
 		console.error("Error fetching LiteLLM models:", error.message ? error.message : error)
-		if (axios.isAxiosError(error) && error.response) {
-			throw new Error(
-				`Failed to fetch LiteLLM models: ${error.response.status} ${error.response.statusText}. Check base URL and API key.`,
-			)
-		} else if (axios.isAxiosError(error) && error.request) {
-			throw new Error(
-				"Failed to fetch LiteLLM models: No response from server. Check LiteLLM server status and base URL.",
-			)
-		} else {
-			throw new Error(`Failed to fetch LiteLLM models: ${error.message || "An unknown error occurred."}`)
+		// Check if it's an axios error to provide more specific error messages
+		if (error && typeof error === "object" && "isAxiosError" in error && error.isAxiosError) {
+			if (error.response) {
+				throw new Error(
+					`Failed to fetch LiteLLM models: ${error.response.status} ${error.response.statusText}. Check base URL and API key.`,
+				)
+			} else if (error.request) {
+				throw new Error(
+					"Failed to fetch LiteLLM models: No response from server. Check LiteLLM server status and base URL.",
+				)
+			}
 		}
+		throw new Error(`Failed to fetch LiteLLM models: ${error.message || "An unknown error occurred."}`)
 	}
 }
