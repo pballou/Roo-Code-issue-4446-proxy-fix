@@ -58,6 +58,7 @@ import { QueuedMessages } from "./QueuedMessages"
 import DismissibleUpsell from "../common/DismissibleUpsell"
 import { useCloudUpsell } from "@src/hooks/useCloudUpsell"
 import { Cloud } from "lucide-react"
+import { safeJsonParse } from "../../../../src/shared/safeJsonParse"
 
 export interface ChatViewProps {
 	isHidden: boolean
@@ -547,10 +548,21 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				lastApiReqStarted.text !== undefined &&
 				lastApiReqStarted.say === "api_req_started"
 			) {
-				const cost = JSON.parse(lastApiReqStarted.text).cost
+				const info = safeJsonParse(lastApiReqStarted.text)
 
-				if (cost === undefined) {
-					return true // API request has not finished yet.
+				// If cancelReason is defined, the stream has been cancelled (terminal state)
+				if (typeof info === "object" && info !== null) {
+					if ("cancelReason" in info && info.cancelReason !== undefined) {
+						return false
+					}
+
+					// Otherwise, check if cost is defined to determine if streaming is complete
+					if ("cost" in info && info.cost !== undefined) {
+						return false // API request has finished.
+					}
+
+					// If we have api_req_started without cost or cancelReason, streaming is in progress
+					return true
 				}
 			}
 		}
@@ -596,7 +608,11 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 			text = text.trim()
 
 			if (text || images.length > 0) {
-				if (sendingDisabled) {
+				// Queue message if:
+				// - Task is busy (sendingDisabled)
+				// - API request in progress (isStreaming)
+				// - Queue has items (preserve message order during drain)
+				if (sendingDisabled || isStreaming || messageQueue.length > 0) {
 					try {
 						console.log("queueMessage", text, images)
 						vscode.postMessage({ type: "queueMessage", text, images })
@@ -652,7 +668,7 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 				handleChatReset()
 			}
 		},
-		[handleChatReset, markFollowUpAsAnswered, sendingDisabled], // messagesRef and clineAskRef are stable
+		[handleChatReset, markFollowUpAsAnswered, sendingDisabled, isStreaming, messageQueue.length], // messagesRef and clineAskRef are stable
 	)
 
 	const handleSetChatBoxMessage = useCallback(
@@ -1011,14 +1027,9 @@ const ChatViewComponent: React.ForwardRefRenderFunction<ChatViewRef, ChatViewPro
 
 			const tool = JSON.parse(message.text)
 
-			return [
-				"editedExistingFile",
-				"appliedDiff",
-				"newFileCreated",
-				"searchAndReplace",
-				"insertContent",
-				"generateImage",
-			].includes(tool.tool)
+			return ["editedExistingFile", "appliedDiff", "newFileCreated", "insertContent", "generateImage"].includes(
+				tool.tool,
+			)
 		}
 
 		return false
